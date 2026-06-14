@@ -1,0 +1,37 @@
+{
+  "name": "work-gallery",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Black 3D portfolio gallery — Active Theory Work-page study (original, no copied assets)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.0.6",
+    "@react-three/fiber": "^9.1.0",
+    "@react-three/postprocessing": "^3.0.4",
+    "framer-motion": "^11.18.0",
+    "gsap": "^3.12.7",
+    "lenis": "^1.1.18",
+    "next": "^15.1.6",
+    "postprocessing": "^6.36.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.171.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.171.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3"
+  }
+}
