@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { AdaptiveDpr, AdaptiveEvents, PerformanceMonitor, Preload } from '@react-three/drei';
+import { AdaptiveEvents, PerformanceMonitor, Preload } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Side-effect: registers custom shader materials with R3F.
@@ -66,7 +66,6 @@ export function Experience() {
         <PostProcessing />
       </PerformanceMonitor>
 
-      <AdaptiveDpr pixelated />
       <AdaptiveEvents />
     </Canvas>
   );

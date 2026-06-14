@@ -7,6 +7,7 @@ import { WorkOverlay } from '@/components/ui/WorkOverlay';
 import { CategoryMenu } from '@/components/ui/CategoryMenu';
 import { ScrollHint } from '@/components/ui/ScrollHint';
 import { Cursor } from '@/components/ui/Cursor';
+import { Loader } from '@/components/ui/Loader';
 
 // WebGL only on the client.
 const Experience = dynamic(
@@ -31,6 +32,7 @@ export default function Home() {
       <CategoryMenu />
       <ScrollHint />
       <Cursor />
+      <Loader />
     </ScrollController>
   );
 }
