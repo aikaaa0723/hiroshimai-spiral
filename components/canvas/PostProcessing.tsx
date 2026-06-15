@@ -26,11 +26,12 @@ export function PostProcessing() {
 
   const effects = [
     enableDof ? (
-      // focusDistance is normalized [0..1] over the camera range — ~0.04 keeps
-      // the cards passing nearest the camera sharp while depth falls into bokeh.
-      <DepthOfField key="dof" focusDistance={0.05} focalLength={0.04} bokehScale={3.2} height={Math.min(size.height, 1080)} />
+      // Focus on the cards (~6 units ahead). Gentle bokeh so the content stays
+      // sharp — only the far background softens. (focusDistance is normalized
+      // over the camera depth range; ~0.06 ≈ the card distance.)
+      <DepthOfField key="dof" focusDistance={0.06} focalLength={0.02} bokehScale={1.5} height={Math.min(size.height, 1080)} />
     ) : null,
-    <Bloom key="bloom" intensity={bloomIntensity} luminanceThreshold={0.55} luminanceSmoothing={0.35} mipmapBlur radius={0.78} />,
+    <Bloom key="bloom" intensity={bloomIntensity} luminanceThreshold={0.72} luminanceSmoothing={0.3} mipmapBlur radius={0.5} />,
     enableChromatic ? (
       <ChromaticAberration
         key="chroma"

@@ -13,9 +13,9 @@ export interface QualitySettings {
 }
 
 const TIERS: Record<Quality, Omit<QualitySettings, 'dpr'>> = {
-  high: { particleCount: 11000, enableDof: true, enableChromatic: true, bloomIntensity: 0.62 },
-  medium: { particleCount: 6500, enableDof: true, enableChromatic: true, bloomIntensity: 0.5 },
-  low: { particleCount: 2500, enableDof: false, enableChromatic: false, bloomIntensity: 0.35 },
+  high: { particleCount: 16000, enableDof: true, enableChromatic: true, bloomIntensity: 0.62 },
+  medium: { particleCount: 10000, enableDof: true, enableChromatic: true, bloomIntensity: 0.5 },
+  low: { particleCount: 4000, enableDof: false, enableChromatic: false, bloomIntensity: 0.35 },
 };
 
 export function useQualitySettings(): QualitySettings {

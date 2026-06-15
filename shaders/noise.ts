@@ -45,3 +45,34 @@ float snoise(vec3 v){
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
 `;
+
+/**
+ * fbm (fractal Brownian motion) — sum of simplex octaves → multi-scale density:
+ * large clumps with finer structure inside (nebula / tissue / ink). Requires
+ * `simplex3d` to be prepended first (it provides snoise). Output ~[-1, 1].
+ */
+export const fbm3d = /* glsl */ `
+float fbm(vec3 p){
+  float amp = 0.5;
+  float freq = 1.0;
+  float sum = 0.0;
+  for (int i = 0; i < 4; i++){
+    sum += amp * snoise(p * freq);
+    freq *= 2.03;
+    amp *= 0.5;
+  }
+  return sum;
+}
+
+/** Divergence-free-ish curl flow from a simplex potential (swirling, fluid). */
+vec3 curl(vec3 p){
+  const float e = 0.35;
+  float x1 = snoise(p + vec3(0.0, e, 0.0)) - snoise(p - vec3(0.0, e, 0.0));
+  float x2 = snoise(p + vec3(0.0, 0.0, e)) - snoise(p - vec3(0.0, 0.0, e));
+  float y1 = snoise(p + vec3(0.0, 0.0, e)) - snoise(p - vec3(0.0, 0.0, e));
+  float y2 = snoise(p + vec3(e, 0.0, 0.0)) - snoise(p - vec3(e, 0.0, 0.0));
+  float z1 = snoise(p + vec3(e, 0.0, 0.0)) - snoise(p - vec3(e, 0.0, 0.0));
+  float z2 = snoise(p + vec3(0.0, e, 0.0)) - snoise(p - vec3(0.0, e, 0.0));
+  return normalize(vec3(x1 - x2, y1 - y2, z1 - z2) + 1e-5);
+}
+`;

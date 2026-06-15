@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback } from 'react';
+import { Suspense, useCallback, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { AdaptiveEvents, PerformanceMonitor, Preload } from '@react-three/drei';
 import * as THREE from 'three';
@@ -9,7 +9,6 @@ import * as THREE from 'three';
 import '@/shaders/materials';
 
 import { useGallery, type Quality } from '@/lib/store';
-import { useQualitySettings } from '@/hooks/useQualitySettings';
 import { CameraRig } from './CameraRig';
 import { BackgroundShader } from './BackgroundShader';
 import { Particles } from './Particles';
@@ -23,7 +22,14 @@ import { PostProcessing } from './PostProcessing';
 export function Experience() {
   const setQuality = useGallery((s) => s.setQuality);
   const setReady = useGallery((s) => s.setReady);
-  const { dpr } = useQualitySettings();
+
+  // FIXED device pixel ratio (a single number, NOT a [min,max] range). A range
+  // lets R3F lower the resolution under load (via the performance system) — which
+  // left the WebGL blurry on high-DPI screens. Fixed = always full resolution.
+  const dpr = useMemo(
+    () => (typeof window !== 'undefined' ? Math.min(2, window.devicePixelRatio || 1.5) : 1.5),
+    [],
+  );
 
   const onIncline = useCallback(() => {
     const q = useGallery.getState().quality;

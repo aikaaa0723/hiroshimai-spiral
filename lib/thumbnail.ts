@@ -7,7 +7,7 @@ import { mulberry32 } from './math';
  * a chromatic edge fringe and a key-light gradient — plus the work's stacked EN
  * title, a glitched echo word, and a JP caption. Deterministic per seed.
  */
-export function makeThumbnail(seed: number, hue = 0.6, title = '', category = ''): THREE.Texture {
+function makeThumbnailCanvas(seed: number, hue = 0.6, title = '', category = ''): HTMLCanvasElement {
   const W = 1024;
   const H = 576; // 16:9
   const canvas = document.createElement('canvas');
@@ -177,6 +177,12 @@ export function makeThumbnail(seed: number, hue = 0.6, title = '', category = ''
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, W, H);
 
+  return canvas;
+}
+
+/** Texture variant (kept for any mesh use). */
+export function makeThumbnail(seed: number, hue = 0.6, title = '', category = ''): THREE.Texture {
+  const canvas = makeThumbnailCanvas(seed, hue, title, category);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 16; // crisp at the steep card angles
@@ -185,4 +191,57 @@ export function makeThumbnail(seed: number, hue = 0.6, title = '', category = ''
   tex.generateMipmaps = true;
   tex.needsUpdate = true;
   return tex;
+}
+
+const srgbToLinear = (c: number) =>
+  c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+
+/**
+ * Sample the thumbnail into a POINT CLOUD whose density follows image luminance:
+ * bright structure becomes dense clusters of points, dark areas stay sparse — so
+ * the picture is "formed by particle density", not painted on a surface. Returns
+ * normalized plane coords (u,v ∈ [-0.5,0.5]) + a small depth jitter, and linear
+ * per-point colours. `count` is the achieved point count (≤ requested).
+ */
+export function sampleThumbnailPoints(
+  seed: number,
+  hue: number,
+  title: string,
+  category: string,
+  requested: number,
+): { positions: Float32Array; colors: Float32Array; seeds: Float32Array; count: number } {
+  const canvas = makeThumbnailCanvas(seed, hue, title, category);
+  const W = canvas.width;
+  const H = canvas.height;
+  const data = canvas.getContext('2d')!.getImageData(0, 0, W, H).data;
+  const rnd = mulberry32(seed * 40503 + 7);
+
+  const positions = new Float32Array(requested * 3);
+  const colors = new Float32Array(requested * 3);
+  const seeds = new Float32Array(requested);
+
+  let i = 0;
+  let guard = 0;
+  const maxTries = requested * 48;
+  while (i < requested && guard < maxTries) {
+    guard++;
+    const px = (rnd() * W) | 0;
+    const py = (rnd() * H) | 0;
+    const idx = (py * W + px) * 4;
+    const r = data[idx] / 255;
+    const g = data[idx + 1] / 255;
+    const b = data[idx + 2] / 255;
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    // Accept ~ proportional to luminance → density forms the image.
+    if (rnd() > lum * 1.15 + 0.015) continue;
+    positions[i * 3 + 0] = px / W - 0.5;
+    positions[i * 3 + 1] = 0.5 - py / H;
+    positions[i * 3 + 2] = (rnd() - 0.5) * 0.06; // depth → volume up close
+    colors[i * 3 + 0] = srgbToLinear(r);
+    colors[i * 3 + 1] = srgbToLinear(g);
+    colors[i * 3 + 2] = srgbToLinear(b);
+    seeds[i] = rnd();
+    i++;
+  }
+  return { positions, colors, seeds, count: i };
 }

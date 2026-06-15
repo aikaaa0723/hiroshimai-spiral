@@ -8,115 +8,125 @@ import { DESCENT } from '@/lib/spiral';
 const TOP = DESCENT.yTop;
 const BOTTOM = DESCENT.yTop - DESCENT.depth;
 const MID = (TOP + BOTTOM) / 2;
-const HEIGHT = DESCENT.depth + 4;
-const PULSES = 10;
 const RIBBON_TURNS = DESCENT.depth / 5; // a wind every ~5 units
 const RING_STEP = 6;
 
-/** A helix ribbon curve winding around the column, offset by `phase`. */
-function ribbonCurve(phase: number) {
-  const pts: THREE.Vector3[] = [];
-  const N = 240;
-  for (let i = 0; i <= N; i++) {
-    const f = i / N;
+/** Build a point cloud along a helix (phase-offset), with slight radial jitter. */
+function helixPoints(phase: number, n: number, radius: number, jitter: number) {
+  const positions = new Float32Array(n * 3);
+  const seeds = new Float32Array(n);
+  const rnd = (k: number) => {
+    const x = Math.sin((k + phase * 13.1) * 91.7) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  for (let i = 0; i < n; i++) {
+    const f = i / (n - 1);
     const y = TOP - f * DESCENT.depth;
     const a = f * RIBBON_TURNS * Math.PI * 2 + phase;
-    pts.push(new THREE.Vector3(Math.cos(a) * 0.5, y, Math.sin(a) * 0.5));
+    positions[i * 3 + 0] = Math.cos(a) * radius + (rnd(i) - 0.5) * jitter;
+    positions[i * 3 + 1] = y + (rnd(i + 1) - 0.5) * jitter;
+    positions[i * 3 + 2] = Math.sin(a) * radius + (rnd(i + 2) - 0.5) * jitter;
+    seeds[i] = rnd(i + 3);
   }
-  return new THREE.CatmullRomCurve3(pts);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  g.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, MID, 0), DESCENT.depth);
+  return g;
 }
 
 /**
- * The central designed spine — a gradient/energy-flow core (SpineMaterial), a
- * double-helix glowing ribbon winding down it, segment rings, and downward
- * pulses. The crystal shards (Crystals) cluster around this same axis.
+ * The central designed spine — entirely points. A point-stream energy core, two
+ * double-helix ribbons rebuilt as strings of glowing points (were tube meshes),
+ * and segment rings rebuilt as point rings (were torus meshes). The crystal
+ * points (Crystals) cluster around this same axis.
  */
 export function Spine() {
-  const matRef = useRef<any>(null);
-  const pulses = useRef<THREE.Group>(null);
-  const ringsRef = useRef<THREE.Group>(null);
+  const coreMat = useRef<any>(null);
+  const ribbonAMat = useRef<any>(null);
+  const ribbonBMat = useRef<any>(null);
+  const ringsMat = useRef<any>(null);
 
-  const ribbonA = useMemo(() => new THREE.TubeGeometry(ribbonCurve(0), 240, 0.035, 8, false), []);
-  const ribbonB = useMemo(() => new THREE.TubeGeometry(ribbonCurve(Math.PI), 240, 0.035, 8, false), []);
-  const rings = useMemo(() => {
-    const out: number[] = [];
-    for (let y = TOP - 2; y > BOTTOM; y -= RING_STEP) out.push(y);
-    return out;
+  // Point-stream core (thin vertical column, denser on the axis).
+  const coreGeo = useMemo(() => {
+    const COUNT = 1600;
+    const positions = new Float32Array(COUNT * 3);
+    const seeds = new Float32Array(COUNT);
+    const hues = new Float32Array(COUNT);
+    for (let i = 0; i < COUNT; i++) {
+      const y = TOP - Math.random() * DESCENT.depth;
+      const r = 0.13 * Math.pow(Math.random(), 1.5);
+      const a = Math.random() * Math.PI * 2;
+      positions[i * 3 + 0] = Math.cos(a) * r;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = Math.sin(a) * r;
+      seeds[i] = Math.random();
+      hues[i] = y * 0.04 + Math.random() * 0.2;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    g.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
+    g.setAttribute('aHue', new THREE.BufferAttribute(hues, 1));
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, MID, 0), DESCENT.depth);
+    return g;
   }, []);
-  const pulseData = useMemo(
-    () => Array.from({ length: PULSES }, (_, i) => ({ offset: i / PULSES, speed: 0.05 })),
-    [],
-  );
+
+  const ribbonA = useMemo(() => helixPoints(0, 1500, 0.5, 0.05), []);
+  const ribbonB = useMemo(() => helixPoints(Math.PI, 1500, 0.5, 0.05), []);
+
+  // Segment rings → point rings.
+  const ringsGeo = useMemo(() => {
+    const perRing = 64;
+    const ys: number[] = [];
+    for (let y = TOP - 2; y > BOTTOM; y -= RING_STEP) ys.push(y);
+    const total = ys.length * perRing;
+    const positions = new Float32Array(total * 3);
+    const seeds = new Float32Array(total);
+    let i = 0;
+    for (const y of ys) {
+      for (let k = 0; k < perRing; k++) {
+        const a = (k / perRing) * Math.PI * 2;
+        positions[i * 3 + 0] = Math.cos(a) * 0.42 + (Math.random() - 0.5) * 0.02;
+        positions[i * 3 + 1] = y + (Math.random() - 0.5) * 0.02;
+        positions[i * 3 + 2] = Math.sin(a) * 0.42 + (Math.random() - 0.5) * 0.02;
+        seeds[i] = Math.random();
+        i++;
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    g.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, MID, 0), DESCENT.depth);
+    return g;
+  }, []);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    if (matRef.current) matRef.current.uniforms.uTime.value = t;
-
-    const g = pulses.current;
-    if (g) {
-      g.children.forEach((child, i) => {
-        const phase = (pulseData[i].offset + t * pulseData[i].speed) % 1;
-        child.position.y = TOP - phase * DESCENT.depth;
-        const m = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
-        m.opacity = Math.sin(phase * Math.PI) * 0.85;
-      });
-    }
-
-    // Rings light up in sequence as a "signal" travels down (bio heartbeat).
-    const rg = ringsRef.current;
-    if (rg) {
-      rg.children.forEach((child) => {
-        const f = (TOP - child.position.y) / DESCENT.depth;
-        const wave = Math.pow(Math.max(0, Math.sin((f - t * 0.12) * Math.PI * 2)), 6);
-        const m = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
-        m.opacity = 0.35 + wave * 0.65;
-        const s = 1 + wave * 0.25;
-        child.scale.set(s, s, s);
-      });
-    }
+    if (coreMat.current) coreMat.current.uniforms.uTime.value = t;
+    if (ribbonAMat.current) ribbonAMat.current.uniforms.uTime.value = t;
+    if (ribbonBMat.current) ribbonBMat.current.uniforms.uTime.value = t;
+    if (ringsMat.current) ringsMat.current.uniforms.uTime.value = t;
   });
 
   return (
     <group>
-      {/* Designed core — a faceted prism (catches light per face). */}
-      <mesh position={[0, MID, 0]}>
-        <cylinderGeometry args={[0.16, 0.16, HEIGHT, 7, 96, true]} />
-        <spineMaterial ref={matRef} transparent depthWrite={false} side={THREE.DoubleSide} />
-      </mesh>
+      {/* Point-stream energy core (was a solid faceted prism). */}
+      <points geometry={coreGeo} frustumCulled={false}>
+        <crystalPointsMaterial ref={coreMat} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+      </points>
 
-      {/* Soft slim glow */}
-      <mesh position={[0, MID, 0]}>
-        <cylinderGeometry args={[0.22, 0.22, HEIGHT, 12, 1, true]} />
-        <meshBasicMaterial color="#6a4fd0" toneMapped={false} transparent opacity={0.1} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
-      </mesh>
+      {/* Double-helix ribbons as point strings (were tube meshes). */}
+      <points geometry={ribbonA} frustumCulled={false}>
+        <glowPointsMaterial ref={ribbonAMat} uColor={new THREE.Color('#7fb0ff')} uSize={8} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+      </points>
+      <points geometry={ribbonB} frustumCulled={false}>
+        <glowPointsMaterial ref={ribbonBMat} uColor={new THREE.Color('#ff6ab0')} uSize={8} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+      </points>
 
-      {/* Double-helix ribbon */}
-      <mesh geometry={ribbonA}>
-        <meshBasicMaterial color="#7fb0ff" toneMapped={false} transparent opacity={0.9} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-      <mesh geometry={ribbonB}>
-        <meshBasicMaterial color="#ff6ab0" toneMapped={false} transparent opacity={0.9} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-
-      {/* Segment rings (pulse in sequence as a signal travels down) */}
-      <group ref={ringsRef}>
-        {rings.map((y) => (
-          <mesh key={y} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.42, 0.014, 8, 48]} />
-            <meshBasicMaterial color="#cfe0ff" toneMapped={false} transparent opacity={0.55} />
-          </mesh>
-        ))}
-      </group>
-
-      {/* Downward pulses */}
-      <group ref={pulses}>
-        {pulseData.map((_, i) => (
-          <mesh key={i} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.16, 0.025, 8, 24]} />
-            <meshBasicMaterial color="#9b7bff" toneMapped={false} transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} />
-          </mesh>
-        ))}
-      </group>
+      {/* Segment rings as point rings (were torus meshes). */}
+      <points geometry={ringsGeo} frustumCulled={false}>
+        <glowPointsMaterial ref={ringsMat} uColor={new THREE.Color('#cfe0ff')} uSize={6.5} uOpacity={0.7} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+      </points>
     </group>
   );
 }

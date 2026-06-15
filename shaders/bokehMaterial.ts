@@ -8,7 +8,7 @@ import { shaderMaterial } from '@react-three/drei';
 export const BokehMaterial = shaderMaterial(
   {
     uTime: 0,
-    uSize: 130,
+    uSize: 28,
   },
   /* glsl vertex */ `
     attribute vec3 aColor;
@@ -30,7 +30,7 @@ export const BokehMaterial = shaderMaterial(
       float dist = -mv.z;
       // Fade close blobs (so they don't smear the lens) and very far ones.
       vAlpha = smoothstep(3.0, 9.0, dist) * smoothstep(70.0, 18.0, dist);
-      gl_PointSize = clamp(uSize * aScale * (1.0 / dist) * 30.0, 2.0, 600.0);
+      gl_PointSize = clamp(uSize * aScale * (1.0 / dist) * 16.0, 2.0, 110.0);
       gl_Position = projectionMatrix * mv;
     }
   `,

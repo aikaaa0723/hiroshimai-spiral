@@ -14,7 +14,7 @@ const PALETTE = ['#ff5fb0', '#d6336c', '#4f7dff', '#8b5cf6', '#b06aff', '#3a78ff
  * radius) through the shaft — background bokeh that gives the space depth and
  * richness instead of a flat particle plane.
  */
-export function BokehField({ count = 120 }: { count?: number }) {
+export function BokehField({ count = 340 }: { count?: number }) {
   const matRef = useRef<any>(null);
 
   const geometry = useMemo(() => {
@@ -35,7 +35,7 @@ export function BokehField({ count = 120 }: { count?: number }) {
       colors[i * 3 + 0] = col.r;
       colors[i * 3 + 1] = col.g;
       colors[i * 3 + 2] = col.b;
-      scales[i] = 0.6 + Math.random() * 1.8;
+      scales[i] = 0.35 + Math.random() * 0.85;
       seeds[i] = Math.random();
     }
 
